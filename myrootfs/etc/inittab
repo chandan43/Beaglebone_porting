@@ -1,0 +1,7 @@
+#Startup the system
+ttyO0::sysinit:/etc/init.d/rcS
+#Start getty on serial for login
+ttyO0::respawn:/sbin/getty -L ttyO0 115200 vt100
+#Stuff to do before rebooting
+null::shutdown:/bin/umount -a -r
+

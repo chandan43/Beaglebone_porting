@@ -1,0 +1,3 @@
+modprobe musb_dsps
+modprobe musb_am335x
+modprobe libcomposite

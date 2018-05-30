@@ -1,0 +1,663 @@
+Linux kernel porting on BegalBone Black
+=======================================
+
+Prerequisite :
+============
+1. One Linux Based Host Machine
+
+sudo apt-get update
+
+sudo apt-get install -y libncurses-dev vim bison flex texinfo zlibc zlib1g zlib1g-dev libglib2.0-dev gawk automake libtool cvs ctags cscope mtd-utils u-boot-tools minicom xinetd tftpd tftp nfs-kernel-server git g++ libssl-dev
+
+sudo apt-get install -y gcc-multilib texinfo unzip diffstat git-core wget gawk build-essential chrpath socat libsdl1.2-dev xterm lzop
+
+
+Step 1: Building a cross tool chain through buildroot fram work :
+===============================================================
+
+Step 1: Download recent buildroot sources package from buildroot.org : 
+	The buildroot repository can be browsed online through cgit at 
+	http://git.buildroot.net/buildroot. 
+	# git clone git://git.buildroot.net/buildroot
+	 
+	Download using cmdline : 
+	# wget https://buildroot.org/downloads/buildroot-2017.08.1.tar.bz2	
+	# tar -xvf  buildroot-2017.08.1.tar.bz2
+	# cd buildroot-2017.08.1
+
+Step 2: Verify hardware support (Target board and SOC) :
+	Find Config file for target board(For Our case Beagal bone black). 
+	#cd configs/
+	For beaglebone case :- beaglebone_defconfig
+
+Step 3: Apply the config choosen :
+	# cd ../       # go to parent Directory i.e buildroot-2017.08.1
+	#make beaglebone_defconfig
+Step 4: Customize configuration:
+	#make menuconfig
+	Note: Some time "make menuconfig" gives errors which is mentioned bellow 
+	     *** Unable to find the ncurses libraries or the
+	Solution : sudo apt-get install libncurses-dev 
+		   and run again make menuconfig
+		#make menuconfig
+	Target options  --->        (Board specific configuration no need to change)
+	Build options  --->
+        Toolchain  --->
+        System configuration  --->
+	Kernel  --->
+	Target packages  --->
+	Filesystem images  --->
+	Bootloaders  --->
+	Host utilities  --->
+	Legacy config options  --->
+	Note: Here we are not going to change any setting apart from Toolchain. 
+	Toolchain  --->
+
+                             Toolchain type (Buildroot toolchain)  --->                                                                                           
+                             *** Toolchain Buildroot Options ***                                                                                                  
+                         (buildroot) custom toolchain vendor name                                                                                                 
+                             C library (uClibc-ng)  --->                                                                                                          
+                             *** Kernel Header Options ***                                                                                                        
+                             Kernel Headers (Manually specified Linux version)  --->                                                                              
+                         (4.4.43) linux version                                                                                                                   
+                             Custom kernel headers series (4.4.x)  --->                                                                                           
+                             *** uClibc Options ***                                                                                                               
+                         (package/uclibc/uClibc-ng.config) uClibc configuration file to use?                                                                      
+                         ()  Additional uClibc configuration fragment files                                                                                       
+                         [*] Enable WCHAR support                                                                                                                 
+                         [ ] Enable toolchain locale/i18n support                                                                                                 
+                             Thread library implementation (Native POSIX Threading (NPTL))  --->                                                                  
+                         [ ] Thread library debugging                                                                                                             
+                         [ ] Enable stack protection support                                                                                                      
+                         [*] Compile and install uClibc utilities                                                                                                 
+                             *** Binutils Options ***                                                                                                             
+                             Binutils Version (binutils 2.28.1)  --->                                                                                             
+                         ()  Additional binutils options                                                                                                          
+                             *** GCC Options ***                                                                                                                  
+                             GCC compiler Version (gcc 6.x)  --->                                                                                                 
+                         ()  Additional gcc options                                                                                                               
+                         [*] Enable C++ support                                                                                                                   
+                         [ ] Enable Fortran support                                                                                                               
+                         [ ] Enable compiler link-time-optimization support                                                                                       
+                         [ ] Enable compiler OpenMP support                                                                                                       
+                         [ ] Enable graphite support                                                                                                              
+                             *** Host GDB Options ***                                                                                                             
+                         [ ] Build cross gdb for the host                                                                                                         
+                             *** Toolchain Generic Options ***                                                                                                    
+                         [*] Enable MMU support                                                                                                                   
+                         ()  Target Optimizations                                                                                                                 
+                         ()  Target linker options                                                                                                                
+                         [ ] Register toolchain within Eclipse Buildroot plug-in
+
+Step 5:  Initiate Tool chain built : 
+	# make toolchain
+	After Successful complition of all above mentioned steps  dl folder will create,
+	which contains selected package which was configured in step 4 and tool chain will
+	be available buildroot-2017.08.1/output/host/usr/bin folder.
+  
+Step 2: Building uboot images for beaglebone black:
+==================================================
+Step 1: Download uboot source code for beaglebone from denx.de website.
+	#https://lists.denx.de/pipermail/u-boot/
+	#http://ftp.denx.de/pub/u-boot/
+	Download using cmdline: 
+	#wget ftp.denx.de/pub/u-boot/u-boot-2017.05.tar.bz2
+	#tar -xvf u-boot-2017.05.tar.bz2
+	#cd u-boot-2017.05 
+Step 2: Find hardware support :
+	Find Config file for target board(For Our case Beagal bone black). 
+	#cd configs/
+	For Beagal boneblack : am335x_boneblack_defconfig
+	#make ARCH=arm am335x_boneblack_defconfig
+Step 3: Set cross tool chain :
+	PATH=$PATH:/home/Embedded_Linux/Porting/buildroot-2017.08.1/output/host/usr/bin
+Step 4: Initiate compile and build :
+	make ARCH=arm CROSS_COMPILE=arm-linux-
+
+
+Building kernel image:
+======================
+Step 1: Download longterm supported kernel sources form https://www.kernel.org/
+	For my case linux-4.4.96.tar.xz
+	# tar xf linux-4.4.96.tar.xz
+	# cd linux-4.4.96
+Step 2: Verify Board support :
+	#make ARCH=arm help    # This one will tell you config file for Board specific or SOC 
+	omap2plus_defconfig for beagle bone board. 
+	
+Step 3: Apply board Config:
+	# make ARCH=arm omap2plus_defconfig 
+	On success: # configuration written to .config
+
+Step 4: Set cross tool chain :
+	PATH=$PATH:/home/elinux/buildroot-2017.08.1/output/host/usr/bin
+Step 5: Initiate Compile and build :
+	make ARCH=arm CROSS_COMPILE=arm-linux- LOADADDR=0x82000000 uImage
+	On success: # Loadable kernel image (uImage) will be available on arch/arm/boot folder
+Step 6: Build device tree image :
+	#make ARCH=arm CROSS_COMPILE=arm-linux- dtbs 
+	On success: arch/arm/boot/dts
+
+Building Root filesystem
+=========================
+
+The organization of sub-directories and files in linux root filesystem (/) 
+is well-defined by the Filesystem Hierarchy Standard, and is as follows:
+
+/bin	Basic programs
+
+/boot	Kernel image
+
+/dev	Device files
+
+/etc	System-wide configuration
+
+/home	Directory for the users home directories
+
+/lib	Basic libraries
+
+/media	Mount points for removable media
+
+/mnt	Mount points for static media
+
+/proc	Mount point for the proc virtual filesystem
+
+/root	Home directory of the root user
+
+/sbin	Basic system programs
+
+/sys	Mount point of the sysfs virtual filesystem
+
+/tmp	Temporary files
+
+/usr
+
+/usr/bin	Non-basic programs
+
+/usr/lib	Non-basic libraries
+
+/usr/sbin	Non-basic system programs
+
+/var	Variable data files. This includes spool directories
+
+and files, administrative and logging data, and transient and temporary files
+
+reating root filesystem for a target machine is, creating required directories and populating them with appropriate files.
+
+
+
+Creating minimal Root filesystem
+
+Create a work space for root filesystem to be built:
+
+mkdir roofs
+
+cd rootfs
+
+
+Now create the root filesystem structure for target machine:
+
+# mkdir dev proc sys etc bin sbin lib mnt usr usr/bin usr/sbin
+
+
+Populate bin, sbin, usr/bin, usr/sbin
+
+Binaries for target machine is created using busybox.
+
+
+A Linux system needs a basic set of programs to work
+
+An init program
+
+A shell
+
+Various basic utilities for file manipulation and system configuration
+
+
+Busybox is an alternative solution, extremely common on embedded systems
+
+Rewrite of many useful Unix command line utilities
+
+Integrated into a single project, which makes it easy to work with
+
+Designed with embedded systems in mind: highly configurable, no unnecessary features
+
+All the utilities are compiled into a single executable, /bin/busybox, symbolic links 
+to /bin/busybox are created for each application integrated into Busybox
+
+Configure Busybox
+=================
+
+Download busybox source from http://busybox.net and extract it:
+
+# tar -xvf <archived-busybox-source-file>
+
+
+Configure busybox,
+
+# make menuconfig
+
+
+as follows:
+
+Busybox Settings --->
+
+Build Options --->
+
+[*] Build BusyBox as a static binary (no shared libs)
+
+
+Coreutils-->
+
+[*] sync
+
+[ ] syncfs
+
+
+Linux System Utilities --->
+
+[*] mdev
+
+[ ] nsenter
+
+
+Compile busybox using cross-compiler:
+
+make CROSS_COMPILE=$(PREFIX-CROSSCOMPILER) Example:
+
+make CROSS_COMPILE=arm-linux-
+
+
+Install the commands in target root filesystem:
+
+make CROSS_COMPILE=arm-linux- CONFIG_PREFIX=<path-to-rootfs> install
+
+Example:
+
+make CROSS_COMPILE=arm-linux-
+
+CONFIG_PREFIX=/root/elinux/workspace/rootfs install 
+
+
+Populate etc
+------------>
+
+init:
+
+Init is the first process started during booting, and is typically assigned PID number 1.
+
+Its primary role is to create processes from a scriptstored in the file /etc/inittab file.
+
+It is started by the kernel, and if the kernel is unable to start it, a kernel panic will result.
+
+All System V init scripts are stored in /etc/rc.d/init.d/ or /etc/init.d directory. These scripts are used to control system startup and shutdown.
+
+BusyBox can handle the system's startup. BusyBox /sbin/init is particularly well adapted to embedded systems, because it provides most of the init functionality an embedded system typically needs without dragging the weight of the extra features found in System V init.
+
+BusyBox init does not provide runlevel support.
+
+The init routine of BusyBox carries out the following main tasks in order:
+1. Sets up signal handlers for init.
+
+2. Initializes the console(s).
+
+3. Parses the inittab file, /etc/inittab.
+
+4. Runs the system initialization script. /etc/init.d/rcS is the default for BusyBox.
+
+5. Runs all the inittab commands that block
+
+(action type: wait).
+
+6. Runs all the inittab commands that run only once (action type: once).
+
+Once it has done this, the init routine loops forever carrying out the following tasks:
+
+
+1. Runs all the inittab commands that have to be respawned (action type: respawn).
+
+2. Runs all the inittab commands that have to be asked for first (action type: askfirst).
+
+
+Create inittab file in etc
+
+Each line in the inittab file follows this format:
+
+id:runlevel:action:process
+id
+-
+specify the tty for the process to be started.
+runleven
+-
+completely ignores the runlevel field
+action
+-
+can be any of the following:
+
+Action
+
+Effect
+1.sysinit Provide init with the path to the initialization script.
+2.respawn Restart the process every time it terminates.
+3.askfirst Similar to respawn, but It prompts init to display "Please press Enter to activate this console."
+4. wait Tell init that it has to wait for the process to complete before continuing.
+5.once Run process only once without waiting for them.
+6.ctrlaltdel Run process when the Ctrl-Alt-Delete key combination is pressed.
+7. shutdown Run process when the system is shutting down.
+8.restart
+
+Run process when init restarts. Usually, the
+
+process to be run here is init itself.
+
+Sample inittab file for beaglebone:
+
+# cd  <path-to-rootfs>/etc
+
+
+vim inittab
+
+
+Copy following commands into inittab file and save it:
+
+Startup the system null::sysinit:/etc/init.d/rcS
+
+Start getty on serial for login ttyO0::respawn:/sbin/getty -L ttyO0 115200 vt100
+
+Stuff to do before rebooting null::shutdown:/bin/umount -a -r
+
+This inittab file does the following:
+
+1. Sets /etc/init.d/rcS as the system initialization file.
+
+2. Starts getty on serial port.
+
+3. Tells init to run the umount command to unmount all filesystems it can at system shutdown
+
+
+Create profile file in etc
+
+profile file has environment variables.
+
+vim profile
+
+
+Copy the following into profile file and save it:
+
+Used for prompt format
+
+PS1='[\u@\h:\W]\# ' PATH=$PATH HOSTNAME=`/bin/hostname` export HOSTNAME PS1 PATH
+
+
+
+Create passwd file
+
+passwd file has user's password information.
+
+vim passwd
+
+
+Copy following command for veda user and save it:
+
+chandan::0:0:root:/root:/bin/sh
+
+
+Create rcS file under /etc/init.d
+
+This script can be quite elaborate and can actually call other scripts.
+
+Use this script to set all the basic settings and initialize the various components of the system like Mount additional filesystems, Initialize and start networking interfaces.
+
+Start system daemons.
+---------------------->
+
+Sample rcS file for beaglebone:
+
+mkdir init.d
+
+vim init.d/rcS
+
+
+Copy follwing commands into the rcS file and save it:
+
+#!/bin/sh
+
+# ---------------------------------------------
+
+Mounting procfs
+
+---------------------------------------------
+
+mount -n -t proc null /proc
+
+---------------------------------------------
+
+Mounting sysfs
+
+# ---------------------------------------------
+
+mount -n -t sysfs null /sys
+
+# ---------------------------------------------
+
+Mounting ramfs to /dev
+
+---------------------------------------------
+
+mount -n -t ramfs null /dev
+
+---------------------------------------------
+
+Create /dev/shm directory and mount tmpfs to /dev/shm
+# ---------------------------------------------
+
+mkdir -p /dev/shm
+
+/bin/mount -n -t tmpfs tmpfs /dev/shm
+
+# ---------------------------------------------
+
+Enabling hot-plug
+
+---------------------------------------------
+
+echo "/sbin/mdev" > /proc/sys/kernel/hotplug
+
+---------------------------------------------
+
+Start mdev
+
+# ---------------------------------------------
+
+mdev -s
+
+# ---------------------------------------------
+
+# Set PATH
+
+# ---------------------------------------------
+
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin
+
+# ---------------------------------------------
+
+# Set ip address
+
+# ---------------------------------------------
+
+/sbin/ifconfig lo 127.0.0.1 up
+
+/sbin/ifconfig eth0 10.0.0.111 up
+
+# ---------------------------------------------
+
+sleep 3
+
+# ---------------------------------------------
+
+Assigning hostname
+
+---------------------------------------------
+
+/bin/hostname boneblack
+
+---------------------------------------------
+
+
+Give executable permissions to rcS script file:
+
+chmod +x init.d/rcS
+
+Populate dev
+------------->
+
+As part of inittab & rcs files as we are using "null & ttyO0" device nodes we need to create them manually.
+
+Create device nodes for beagle bone:
+
+cd <path-to-rootfs>/dev
+
+mknod console c 5 1
+
+mknod null c 1 3
+
+mknod ttyO0 c 204 64
+
+Populate lib
+-------------->
+
+As we used buildroot for building cross-compiler copy all libs created by buildroot for target machine.
+
+cp -Rfp <path-to-buildroot-source>/output/host/usr/arm-buildroot-linux-uclibcgnueabi/lib/* <path-to-rootfs>/lib
+
+cp -Rfp <path-to-buildroot-source>/output/host/usr/arm-buildroot-linux-uclibcgnueabi/sysroot/lib/* <path-to-rootfs>/lib
+
+cp -Rfp <path-to-buildroot-source>/output/host/usr/arm-buildroot-linux-uclibcgnueabi/sysroot/usr/lib/* <path-to-rootfs>/lib
+
+cp -Rfp <path-to-buildroot-source>/output/host/usr/lib/* <path-to-rootfs>/lib
+
+- And copy other libraries cross-compiled for target machine.
+
+Install kernel modules
+=======================
+
+At the time of building kernel if ant service is selected as modules, 
+than we neet to install those modules as part of target root file system.
+
+The following command will install kernel modules in target root file system
+
+
+Change directory to cross-compiled linux kernel and give following command:
+
+cd <path-to-linux-source>
+
+
+make ARCH=arm CROSS_COMPILE=arm-linux- modules
+
+
+make ARCH=arm CROSS_COMPILE=arm-linux-INSTALL_MOD_PATH=<path-to-rootfs> modules_install
+
+#-----------------------------------------------------------------------------------------------------#
+Bglebone Black Booting
+======================
+Booting from SD Card :
+-------------------->>>>>>>>>>>>>>
+Booting Beaglebone involves these images:
+* U-boot: Beaglebone supports two stage bootloader. MLO is the primary
+bootloader and u-boot.img is the second stage bootloader available in u-boot.
+* Kernel: zImage is the bootable kernel image available in arch/arm/boot of the
+Linux source. We also need device tree, blob am335x-boneblack.dtb.
+* Rootfs: It is loaded by kernel from root partition of the sd card.
+Procedure:
+* Connect the SD card to host system and create two partitions one for BOOT
+and one for ROOT and format the two partitions as Fat32 and ext3 filesystems.
+
+* Copy all bootable files (MLO, u-boot.img, zImage, am335x-
+boneblack.dtb) into BOOT partition.
+* copy rootfs into ROOT partition.
+* unmount the sd card.
+* Insert the SD card into the board sd card slot.
+* Connect the serial to usb to host and open minicom terminal.
+* Then press boot button and poweron by using usb cable.
+* The board automatically boots from the sd card showing u-boot prompt.
+* Press space bar to abort autoboot.
+* Then set the bootargs for the kernel using setenv command:
+=> setenv bootargs console=ttyO0,115200 rw root=/dev/mmcblk0p2
+rootfstype=ext3 rootwait
+* Load the kernel and device tree into RAM
+=> load mmc 0:1 0x82000000 uImage
+=> load mmc 0:1 0x84000000 am335x-boneblack.dtb
+* Boot the kernel from RAM using bootz
+=> bootm 0x82000000 - 0x84000000
+
+Using NFS:
+---------->>>>>>>>>>
+* To mount rootfs on target from host using NFS, open /etc/exports file:
+$ sudo vim /etc/exports
+* Copy below line in the /etc/exports file on host machine & save it.
+/(Rootfs_path) 10.0.0.111(rw,sync,no_root_squash,no_all_squash,
+no_subtree_check)
+* Restart NFS server on host
+$ sudo /etc/init.d/nfs-kernel-server restart
+* Then set the bootargs for the kernel using setenv command:
+=> setenv bootargs console=ttyO0,115200 ip=10.0.0.111:10.0.0.4::255.255.
+255.0 rw root=/dev/nfs nfsroot=10.0.0.4:(/path to rootfs)
+* Load the kernel and device tree into RAM
+=> load mmc 0:1 0x82000000 uImage
+=> load mmc 0:1 0x84000000 am335x-boneblack.dtb
+* Boot the kernel from RAM using bootz
+=> bootm 0x82000000 - 0x84000000
+
+Booting kernel with network via TFTP:
+====================================>>>>>>>>>>>>>>>>>>>
+* Configuring host machine.
+1. Create tftp file in /etc/xinetd.d/ directory
+$ sudo vim /etc/xinetd.d/tftp
+2. Copy following into that file and save it.
+service tftp
+{
+protocol
+port
+socket_type
+wait
+user
+server
+server_args
+disable
+}
+= udp
+= 69
+= dgram
+= yes
+= nobody
+= /usr/sbin/in.tftpd
+= /tftpboot
+= no
+* /tftpboot is the server searching path to serve files to clients.
+* Start tftp server.
+$ sudo service xinetd stop
+$ sudo service xinetd start
+* Now host system in ready to transfer images using tftp
+* Now create tftpboot directory in / on host machine.
+$ sudo mkdir tftpboot
+* Copy uImage into /tftpboot (server directory).
+* Copy am335x-boneblack.dtb into /tftpboot
+
+* Connect the serial to usb to host and open minicom terminal.
+* Then press boot button and poweron by using usb cable.
+* The board automatically boots from the sd card showing u-boot prompt.
+* Press space bar to abort autoboot.
+* Set server ip address on target
+=> setenv serverip 10.0.0.4
+* Set target ip address
+=> setenv ipaddr 10.0.0.111
+* Try ping from target to host
+=> ping 10.0.0.4
+* Then set the bootargs for the kernel using setenv command:
+=> setenv bootargs console=ttyO0,115200 ip=10.0.0.111:10.0.0.4::
+255.255. 255.0 rw root=/dev/nfs nfsroot=10.0.0.4:(/path to rootfs)
+* Load the kernel and device tree into RAM
+=> tftpboot 0x82000000 uImage
+=> tftpboot 0x84000000 am335x-boneblack.dtb
+* Boot the kernel from RAM using bootz
+=> bootm 0x82000000 - 0x84000000.

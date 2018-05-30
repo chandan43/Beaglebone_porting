@@ -1,0 +1,38 @@
+#!/bin/sh
+
+#-----------------------------------------------------
+#Mounting procfs 
+mount -n -t proc null /proc
+#-----------------------------------------------------
+#Mounting sysfs 
+mount -n -t sysfs null /sys
+#-----------------------------------------------------
+#Mounting ramfs to /dev
+mount -n -t ramfs null /dev
+#-----------------------------------------------------
+#Create /dev/shm directory and mount tmpfs to /dev/shm
+mkdir -p /dev/shm 
+/bin/mount -n -t tmpfs tmpfs /dev/shm
+#-----------------------------------------------------
+#Enabling hot-plug
+#-----------------------------------------------------
+echo "/sbin/mdev" >/proc/sys/kernel/hotplug
+#start mdev
+#-----------------------------------------------------
+mdev -s
+#Set PATH
+#-----------------------------------------------------
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin
+#Set IP address
+#-----------------------------------------------------
+/sbin/ifconfig lo 127.0.0.1 up
+/sbin/ifconfig eth0 10.0.0.111 up
+#-----------------------------------------------------
+sleep 3
+#-----------------------------------------------------
+#Assigning hostname
+#-----------------------------------------------------
+/bin/hostname BBBlack
+#-----------------------------------------------------
+
+

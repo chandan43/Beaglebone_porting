@@ -1,0 +1,5 @@
+#Used for prompt format
+PS1='[\u@\h:\W]\# '
+PATH=$PATH
+HOSTNAME=`/bin/hostname`
+export HOSTNAME PS1 PATH
